@@ -6,41 +6,47 @@ from sklearn.preprocessing import StandardScaler
 from imblearn.over_sampling import SMOTE
 import joblib
 
-# 读取训练集数据 (由于你说是复制粘贴的数据格式，所以这里我们从GitHub仓库中加载训练集)
+# 加载数据
 @st.cache
 def load_data():
-    data = pd.DataFrame({
-        'Race': [0, 1, 0, 0, 0, 2, 0, 1, 0, 0, 0, 1],
-        'WHO_classification': [5, 2, 3, 3, 4, 4, 2, 4, 5, 5, 5, 3],
-        'Masaoka_Koga_Stage': [2, 2, 2, 0, 2, 2, 0, 1, 1, 0, 2, 2],
-        'Lung_metastasis': [0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-    })
+    # 读取训练集数据
+    data = pd.read_csv('训练集.csv')
     return data
 
-# 加载数据
-train_data = load_data()
+# 数据预处理
+@st.cache
+def preprocess_data(data):
+    # 分离输入特征和目标变量
+    X = data[['Race', 'WHO_classification', 'Masaoka_Koga_Stage']]
+    y = data['Lung_metastasis']
+    
+    # 使用SMOTE处理数据不平衡
+    sm = SMOTE(random_state=42)
+    X_resampled, y_resampled = sm.fit_resample(X, y)
 
-# 分离输入特征和目标变量
-X = train_data[['Race', 'WHO_classification', 'Masaoka_Koga_Stage']]
-y = train_data['Lung_metastasis']
+    # 特征缩放
+    scaler = StandardScaler()
+    X_resampled_scaled = scaler.fit_transform(X_resampled)
 
-# 使用SMOTE技术处理数据不平衡
-sm = SMOTE(random_state=42)
-X_resampled, y_resampled = sm.fit_resample(X, y)
+    return X_resampled_scaled, y_resampled, scaler
 
-# 特征缩放
-scaler = StandardScaler()
-X_resampled_scaled = scaler.fit_transform(X_resampled)
+# 加载和训练模型
+@st.cache(allow_output_mutation=True)
+def train_model():
+    data = load_data()
+    X_resampled_scaled, y_resampled, scaler = preprocess_data(data)
+    
+    # 创建并训练GBM模型
+    gbm_model = GradientBoostingClassifier(random_state=42)
+    gbm_model.fit(X_resampled_scaled, y_resampled)
+    
+    # 保存模型和标准化器
+    joblib.dump(gbm_model, 'gbm_model.pkl')
+    joblib.dump(scaler, 'scaler.pkl')
 
-# 创建并训练GBM模型
-gbm_model = GradientBoostingClassifier(random_state=42)
-gbm_model.fit(X_resampled_scaled, y_resampled)
+    return gbm_model, scaler
 
-# 将模型保存到文件，以便在预测时使用
-joblib.dump(gbm_model, 'gbm_model.pkl')
-joblib.dump(scaler, 'scaler.pkl')
-
-# 创建一个预测函数
+# 预测函数
 def predict_lung_metastasis(Race, WHO_classification, Masaoka_Koga_Stage):
     # 加载模型和标准化器
     gbm_model = joblib.load('gbm_model.pkl')
@@ -77,3 +83,6 @@ if st.button("Predict"):
     class_label = "Yes" if prediction == 1 else "No"
     st.write(f"Predicted Lung Metastasis: {class_label}")
     st.write(f"Probability: {probability:.3f}")
+
+# 训练模型（首次运行时会执行）
+train_model()
