@@ -1,6 +1,7 @@
 import pandas as pd
-import io
+import numpy as np
 from sklearn.ensemble import GradientBoostingClassifier
+from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 from imblearn.over_sampling import SMOTE
 import streamlit as st
@@ -24,20 +25,15 @@ Race,WHO_classification,Masaoka_Koga_Stage,Lung_metastasis
 """
 
 # 使用 io.StringIO 读取数据
-train_data = pd.read_csv(io.StringIO(data))
+train_data = pd.read_csv(pd.io.common.StringIO(data))
 
 # 分离输入特征和目标变量
 X = train_data[['Race', 'WHO_classification', 'Masaoka_Koga_Stage']]
 y = train_data['Lung_metastasis']
 
-# 处理数据不平衡问题
-# 尝试调整 SMOTE 的参数，例如 k_neighbors 和 random_state
-try:
-    sm = SMOTE(random_state=42, k_neighbors=1)  # 尝试降低 k_neighbors 的值
-    X_resampled, y_resampled = sm.fit_resample(X, y)
-except ValueError as e:
-    st.error(f"SMOTE 处理时出现错误: {e}")
-    st.stop()
+# 使用SMOTE处理数据不平衡问题
+sm = SMOTE(random_state=42)
+X_resampled, y_resampled = sm.fit_resample(X, y)
 
 # 特征缩放
 scaler = StandardScaler()
@@ -46,10 +42,6 @@ X_scaled = scaler.fit_transform(X_resampled)
 # 创建并训练GBM模型
 gbm_model = GradientBoostingClassifier(random_state=42)
 gbm_model.fit(X_scaled, y_resampled)
-
-# 保存模型和标准化器
-joblib.dump(gbm_model, 'gbm_model.pkl')
-joblib.dump(scaler, 'scaler.pkl')
 
 # 特征映射
 feature_order = ['Race', 'WHO_classification', 'Masaoka_Koga_Stage']
@@ -66,13 +58,12 @@ def predict_lung_metastasis(Race, WHO_classification, Masaoka_Koga_Stage):
         'Masaoka_Koga_Stage': [Stage_mapper[Masaoka_Koga_Stage]],
     }, columns=feature_order)
 
-    # 加载模型和标准化器
-    model = joblib.load('gbm_model.pkl')
-    scaler = joblib.load('scaler.pkl')
-
+    # 特征缩放
     input_data_scaled = scaler.transform(input_data)
-    prediction = model.predict(input_data_scaled)[0]
-    probability = model.predict_proba(input_data_scaled)[0][1]  # 获取属于类别1的概率
+    
+    # 预测
+    prediction = gbm_model.predict(input_data_scaled)[0]
+    probability = gbm_model.predict_proba(input_data_scaled)[0][1]  # 获取属于类别1的概率
     class_label = class_mapping[prediction]
     return class_label, probability
 
@@ -86,6 +77,9 @@ Masaoka_Koga_Stage = st.sidebar.selectbox("Masaoka-Koga Stage", options=list(Sta
 
 if st.button("Predict"):
     prediction, probability = predict_lung_metastasis(Race, WHO_classification, Masaoka_Koga_Stage)
-
     st.write("Class Label: ", prediction)
     st.write("Probability of developing lung metastasis: ", probability)
+
+# 保存模型
+joblib.dump(gbm_model, 'gbm_model.pkl')
+joblib.dump(scaler, 'scaler.pkl')
