@@ -3,4 +3,3 @@ scikit-learn
 imblearn
 streamlit
 joblib
-chardet
