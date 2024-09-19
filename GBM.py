@@ -30,9 +30,14 @@ train_data = pd.read_csv(io.StringIO(data))
 X = train_data[['Race', 'WHO_classification', 'Masaoka_Koga_Stage']]
 y = train_data['Lung_metastasis']
 
-# 使用SMOTE处理数据不平衡问题
-sm = SMOTE(random_state=42)
-X_resampled, y_resampled = sm.fit_resample(X, y)
+# 处理数据不平衡问题
+# 尝试调整 SMOTE 的参数，例如 k_neighbors 和 random_state
+try:
+    sm = SMOTE(random_state=42, k_neighbors=1)  # 尝试降低 k_neighbors 的值
+    X_resampled, y_resampled = sm.fit_resample(X, y)
+except ValueError as e:
+    st.error(f"SMOTE 处理时出现错误: {e}")
+    st.stop()
 
 # 特征缩放
 scaler = StandardScaler()
