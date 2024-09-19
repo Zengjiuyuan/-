@@ -22,23 +22,26 @@ import joblib
 # 使用chardet库检测文件编码
 def detect_encoding(file_path):
     with open(file_path, 'rb') as f:
-        result = chardet.detect(f.read())
+        result = chardet.detect(f.read(10000))  # 检测前 10000 字节
     return result['encoding']
 
 # 读取CSV文件
 def read_csv_with_fallback(file_path):
-    try:
-        # 检测文件的编码
-        encoding = detect_encoding(file_path)
-        st.write(f"Detected file encoding: {encoding}")
-
-        # 尝试读取文件，忽略格式错误行
-        data = pd.read_csv(file_path, encoding=encoding, delimiter='\t', error_bad_lines=False)
-        st.write("Successfully read the CSV file.")
-        return data
-    except Exception as e:
-        st.write(f"An error occurred while reading the file: {e}")
-        return None
+    encodings = ['utf-8', 'latin1', 'gbk']  # 尝试几种常见的编码
+    for encoding in encodings:
+        try:
+            # 尝试读取文件，并使用 on_bad_lines 处理错误行
+            data = pd.read_csv(file_path, encoding=encoding, delimiter='\t', on_bad_lines='skip')
+            st.write(f"Successfully read the CSV file using encoding: {encoding}")
+            return data
+        except UnicodeDecodeError:
+            st.write(f"Failed to read with encoding: {encoding}, trying next...")
+            continue
+        except Exception as e:
+            st.write(f"An error occurred: {e}")
+            return None
+    st.write("All encoding attempts failed.")
+    return None
 
 # 读取训练集数据
 train_data = read_csv_with_fallback('训练集.csv')
