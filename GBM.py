@@ -1,4 +1,5 @@
 import pandas as pd
+import io
 from sklearn.ensemble import GradientBoostingClassifier
 from sklearn.preprocessing import StandardScaler
 from imblearn.over_sampling import SMOTE
@@ -21,7 +22,9 @@ Race,WHO_classification,Masaoka_Koga_Stage,Lung_metastasis
 0,5,2,0
 1,3,2,0
 """
-train_data = pd.read_csv(pd.compat.StringIO(data))
+
+# 使用 io.StringIO 读取数据
+train_data = pd.read_csv(io.StringIO(data))
 
 # 分离输入特征和目标变量
 X = train_data[['Race', 'WHO_classification', 'Masaoka_Koga_Stage']]
@@ -81,5 +84,3 @@ if st.button("Predict"):
 
     st.write("Class Label: ", prediction)
     st.write("Probability of developing lung metastasis: ", probability)
-
-# 保存的模型和标准化器已经加载在Web应用程序中，用于实时预测
