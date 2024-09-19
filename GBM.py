@@ -6,8 +6,8 @@ from imblearn.over_sampling import SMOTE
 import streamlit as st
 import joblib
 
-# 加载数据
-data = pd.read_csv('训练集.csv')
+# 加载数据时指定编码为 utf-8
+data = pd.read_csv('训练集.csv', encoding='utf-8')
 
 # 分离特征和目标变量
 X = data[['Race', 'WHO_classification', 'Masaoka_Koga_Stage']]
