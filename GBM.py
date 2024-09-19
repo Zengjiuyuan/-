@@ -6,22 +6,22 @@ from imblearn.over_sampling import SMOTE
 import streamlit as st
 import joblib
 
-# 加载数据时指定编码为 utf-8
-data = pd.read_csv('训练集.csv', encoding='utf-8')
+# 加载 txt 文件，假设用制表符（tab）分隔，如果用逗号分隔，可以改为 delimiter=','
+data = pd.read_csv('训练集.txt', delimiter='\t', encoding='utf-8')
 
 # 分离特征和目标变量
 X = data[['Race', 'WHO_classification', 'Masaoka_Koga_Stage']]
 y = data['Lung_metastasis']
 
-# 使用SMOTE处理数据不平衡
+# 使用SMOTE处理数据不平衡问题
 smote = SMOTE(random_state=42)
 X_resampled, y_resampled = smote.fit_resample(X, y)
 
-# 数据缩放
+# 标准化特征
 scaler = StandardScaler()
 X_scaled = scaler.fit_transform(X_resampled)
 
-# 训练GBM模型
+# 训练 GBM 模型
 gbm_model = GradientBoostingClassifier(n_estimators=100, random_state=42)
 gbm_model.fit(X_scaled, y_resampled)
 
@@ -46,6 +46,7 @@ def predict_lung_metastasis(Race, WHO_classification, Masaoka_Koga_Stage):
         'Masaoka_Koga_Stage': [Masaoka_Koga_Stage]
     })
 
+    # 数据标准化
     input_data_scaled = scaler.transform(input_data)
     prediction = model.predict(input_data_scaled)[0]
     probability = model.predict_proba(input_data_scaled)[0][1]
@@ -62,7 +63,7 @@ Race = st.sidebar.selectbox('Race', options=list(Race_mapper.keys()), format_fun
 WHO_classification = st.sidebar.selectbox('WHO Classification', options=list(WHO_mapper.keys()), format_func=lambda x: WHO_mapper[x])
 Masaoka_Koga_Stage = st.sidebar.selectbox('Masaoka-Koga Stage', options=list(Stage_mapper.keys()), format_func=lambda x: Stage_mapper[x])
 
-# 预测
+# 预测按钮
 if st.sidebar.button('Predict'):
     prediction, probability = predict_lung_metastasis(Race, WHO_classification, Masaoka_Koga_Stage)
     st.write(f'Prediction: {prediction}')
