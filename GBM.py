@@ -1,4 +1,3 @@
-好的，以下是一个完整的代码示例，包含了如何处理编码问题并读取 训练集.csv 文件，还包括常用的异常处理机制。如果遇到编码错误，代码会自动尝试不同的编码格式，并最终读取数据：
 
 import pandas as pd
 from sklearn.ensemble import GradientBoostingClassifier
