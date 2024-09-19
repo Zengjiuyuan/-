@@ -5,19 +5,25 @@ from imblearn.over_sampling import SMOTE
 import streamlit as st
 import joblib
 
-# 尝试读取以制表符分隔的文件
+# 尝试不同编码读取CSV文件的函数
 def read_csv_with_fallback(file_path):
-    try:
-        # 指定 delimiter='\t' 表示制表符分隔的文件
-        data = pd.read_csv(file_path, delimiter='\t', encoding='utf-8')
-        st.write("Successfully read the CSV file with tab delimiter.")
-        return data
-    except pd.errors.ParserError as e:
-        st.write(f"Parser error: {e}")
-        return None
-    except Exception as e:
-        st.write(f"An error occurred: {e}")
-        return None
+    encodings = ['latin1', 'gbk', 'utf-8']  # 常见编码格式
+    for encoding in encodings:
+        try:
+            # 尝试使用不同的编码读取文件
+            data = pd.read_csv(file_path, delimiter='\t', encoding=encoding, error_bad_lines=False)
+            st.write(f"Successfully read the CSV file using encoding: {encoding}")
+            return data
+        except UnicodeDecodeError:
+            # 如果出现解码错误，继续尝试下一个编码
+            st.write(f"Failed to read with encoding: {encoding}, trying next encoding...")
+            continue
+        except Exception as e:
+            # 捕获并显示其他类型的错误
+            st.write(f"An error occurred: {e}")
+            return None
+    st.write("All encoding attempts failed.")
+    return None
 
 # 读取训练集数据
 train_data = read_csv_with_fallback('训练集.csv')
