@@ -1,5 +1,6 @@
 pandas
 scikit-learn
-imbalanced-learn
+imblearn
 streamlit
 joblib
+chardet
