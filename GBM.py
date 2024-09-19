@@ -33,6 +33,7 @@ joblib.dump(scaler, 'scaler.pkl')
 Race_mapper = {0: 'White', 1: 'Black', 2: 'Other'}
 WHO_mapper = {0: 'A', 1: 'AB', 2: 'B1', 3: 'B2', 4: 'B3', 5: 'C'}
 Stage_mapper = {0: 'I/IIA', 1: 'IIB', 2: 'III/IV'}
+Metastasis_mapper = {0: 'No Lung Metastasis', 1: 'Lung Metastasis'}
 
 # 预测函数
 def predict_lung_metastasis(Race, WHO_classification, Masaoka_Koga_Stage):
@@ -49,7 +50,7 @@ def predict_lung_metastasis(Race, WHO_classification, Masaoka_Koga_Stage):
     prediction = model.predict(input_data_scaled)[0]
     probability = model.predict_proba(input_data_scaled)[0][1]
     
-    return prediction, probability
+    return Metastasis_mapper[prediction], probability
 
 # Streamlit Web应用程序
 st.title('Lung Metastasis Prediction for Thymoma Patients')
@@ -64,6 +65,5 @@ Masaoka_Koga_Stage = st.sidebar.selectbox('Masaoka-Koga Stage', options=list(Sta
 # 预测
 if st.sidebar.button('Predict'):
     prediction, probability = predict_lung_metastasis(Race, WHO_classification, Masaoka_Koga_Stage)
-    prediction_label = 'No Lung Metastasis' if prediction == 0 else 'Lung Metastasis'
-    st.write(f'Prediction: {prediction_label}')
+    st.write(f'Prediction: {prediction}')
     st.write(f'Probability of Lung Metastasis: {probability:.2f}')
