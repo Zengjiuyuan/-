@@ -1,29 +1,44 @@
+import os
+import subprocess
+
+# 安装 chardet 库
+def install_chardet():
+    try:
+        subprocess.check_call([os.sys.executable, '-m', 'pip', 'install', 'chardet'])
+        print("chardet successfully installed.")
+    except Exception as e:
+        print(f"An error occurred while installing chardet: {e}")
+
+install_chardet()  # 安装 chardet
+
 import pandas as pd
+import chardet
 from sklearn.ensemble import GradientBoostingClassifier
 from sklearn.preprocessing import StandardScaler
 from imblearn.over_sampling import SMOTE
 import streamlit as st
 import joblib
 
-# 尝试不同编码读取CSV文件的函数
+# 使用chardet库检测文件编码
+def detect_encoding(file_path):
+    with open(file_path, 'rb') as f:
+        result = chardet.detect(f.read())
+    return result['encoding']
+
+# 读取CSV文件
 def read_csv_with_fallback(file_path):
-    encodings = ['latin1', 'gbk', 'utf-8']  # 常见编码格式
-    for encoding in encodings:
-        try:
-            # 尝试使用不同的编码读取文件
-            data = pd.read_csv(file_path, delimiter='\t', encoding=encoding, error_bad_lines=False)
-            st.write(f"Successfully read the CSV file using encoding: {encoding}")
-            return data
-        except UnicodeDecodeError:
-            # 如果出现解码错误，继续尝试下一个编码
-            st.write(f"Failed to read with encoding: {encoding}, trying next encoding...")
-            continue
-        except Exception as e:
-            # 捕获并显示其他类型的错误
-            st.write(f"An error occurred: {e}")
-            return None
-    st.write("All encoding attempts failed.")
-    return None
+    try:
+        # 检测文件的编码
+        encoding = detect_encoding(file_path)
+        st.write(f"Detected file encoding: {encoding}")
+
+        # 尝试读取文件，忽略格式错误行
+        data = pd.read_csv(file_path, encoding=encoding, delimiter='\t', error_bad_lines=False)
+        st.write("Successfully read the CSV file.")
+        return data
+    except Exception as e:
+        st.write(f"An error occurred while reading the file: {e}")
+        return None
 
 # 读取训练集数据
 train_data = read_csv_with_fallback('训练集.csv')
