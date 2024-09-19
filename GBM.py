@@ -2,13 +2,11 @@ import streamlit as st
 import joblib
 import os
 from sklearn.ensemble import GradientBoostingClassifier
-from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
-from sklearn.metrics import accuracy_score
 
 # 假设有函数 load_data 来加载数据
 def load_data():
-    # 替换为你自己的数据加载逻辑
+    # 这里是示例数据，请替换为实际的数据加载逻辑
     data = {
         'Race': [1, 2, 1, 2],
         'WHO_classification': [1, 2, 1, 2],
@@ -43,10 +41,19 @@ def train_model():
 
 # 从文件加载模型
 def load_model():
-    if os.path.exists('gbm_model.pkl') and os.path.exists('scaler.pkl'):
-        gbm_model = joblib.load('gbm_model.pkl')
-        scaler = joblib.load('scaler.pkl')
-    else:
+    try:
+        # 检查文件是否存在
+        if os.path.exists('gbm_model.pkl') and os.path.exists('scaler.pkl'):
+            gbm_model = joblib.load('gbm_model.pkl')
+            scaler = joblib.load('scaler.pkl')
+        else:
+            # 如果模型文件不存在，则重新训练模型
+            st.warning('Model files not found. Training new model...')
+            gbm_model, scaler = train_model()
+            st.success('Model trained and saved successfully.')
+    except Exception as e:
+        st.error(f"Error loading model: {e}")
+        # 如果模型加载失败，重新训练模型
         gbm_model, scaler = train_model()
     
     return gbm_model, scaler
@@ -62,12 +69,14 @@ def predict_lung_metastasis(Race, WHO_classification, Masaoka_Koga_Stage):
     
     # 将输入数据标准化
     input_data = [[Race, WHO_classification, Masaoka_Koga_Stage]]
-    input_data_scaled = scaler.transform(input_data)
-    
-    prediction = gbm_model.predict(input_data_scaled)
-    probability = gbm_model.predict_proba(input_data_scaled)
-    
-    return prediction[0], probability[0]
+    try:
+        input_data_scaled = scaler.transform(input_data)
+        prediction = gbm_model.predict(input_data_scaled)
+        probability = gbm_model.predict_proba(input_data_scaled)
+        return prediction[0], probability[0]
+    except Exception as e:
+        st.error(f"Error during prediction: {e}")
+        return None, None
 
 # Streamlit 应用界面
 st.title('Lung Metastasis Prediction')
@@ -81,5 +90,8 @@ Masaoka_Koga_Stage = st.number_input('Enter Masaoka-Koga Stage:', min_value=1, m
 if st.button('Predict'):
     prediction, probability = predict_lung_metastasis(Race, WHO_classification, Masaoka_Koga_Stage)
     
-    st.write(f'Prediction: {"Metastasis" if prediction == 1 else "No Metastasis"}')
-    st.write(f'Probability: {probability}')
+    if prediction is not None:
+        st.write(f'Prediction: {"Metastasis" if prediction == 1 else "No Metastasis"}')
+        st.write(f'Probability: {probability}')
+    else:
+        st.error('Prediction failed. Please check the input values or model configuration.')
