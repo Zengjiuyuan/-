@@ -1,68 +1,51 @@
+好的，以下是一个完整的代码示例，包含了如何处理编码问题并读取 训练集.csv 文件，还包括常用的异常处理机制。如果遇到编码错误，代码会自动尝试不同的编码格式，并最终读取数据：
+
 import pandas as pd
 from sklearn.ensemble import GradientBoostingClassifier
 from sklearn.preprocessing import StandardScaler
 from imblearn.over_sampling import SMOTE
 import streamlit as st
 import joblib
+import chardet
 
-# 读取训练集数据
-train_data = pd.read_csv('训练集.csv')
+# 尝试不同编码读取CSV文件的函数
+def read_csv_with_encoding(file_path):
+    encodings = ['utf-8', 'gbk', 'latin1']  # 常用编码
+    for encoding in encodings:
+        try:
+            return pd.read_csv(file_path, encoding=encoding), encoding
+        except UnicodeDecodeError:
+            continue
+    # 如果所有常用编码都无法读取，尝试使用chardet检测
+    with open(file_path, 'rb') as f:
+        result = chardet.detect(f.read())
+        detected_encoding = result['encoding']
+    return pd.read_csv(file_path, encoding=detected_encoding), detected_encoding
 
-# 分离输入特征和目标变量
-X = train_data[['Race', 'WHO_classification', 'Masaoka_Koga_Stage']]
-y = train_data['Lung_metastasis']
+# 使用read_csv_with_encoding函数读取训练集数据
+train_data, encoding_used = read_csv_with_encoding('训练集.csv')
 
-# 使用SMOTE处理数据不平衡问题
-sm = SMOTE(random_state=42)
-X_smote, y_smote = sm.fit_resample(X, y)
+# 输出读取文件时使用的编码
+st.write(f"Successfully read the CSV file using encoding: {encoding_used}")
 
-# 特征缩放
+# 对数据进行标准化
 scaler = StandardScaler()
-X_scaled = scaler.fit_transform(X_smote)
+X = train_data.drop('label', axis=1)  # 假设数据集中 'label' 是目标列
+y = train_data['label']
 
-# 创建并训练GBM模型
-gbm_model = GradientBoostingClassifier(n_estimators=100, random_state=42)
-gbm_model.fit(X_scaled, y_smote)
+X_scaled = scaler.fit_transform(X)
 
-# 保存模型和缩放器
-joblib.dump(gbm_model, 'gbm_model.pkl')
-joblib.dump(scaler, 'scaler.pkl')
+# 使用SMOTE进行上采样
+smote = SMOTE()
+X_resampled, y_resampled = smote.fit_resample(X_scaled, y)
 
-# 加载模型和缩放器
-gbm_model = joblib.load('gbm_model.pkl')
-scaler = joblib.load('scaler.pkl')
+# 创建GBM分类器
+model = GradientBoostingClassifier()
 
-# 特征映射
-feature_order = ['Race', 'WHO_classification', 'Masaoka_Koga_Stage']
-class_mapping = {0: "No lung metastasis", 1: "Lung metastasis"}
-Race_mapper = {"White": 0, "Black": 1, "Other": 2}
-WHO_classification_mapper = {"A": 0, "AB": 1, "B1": 2, "B2": 3, "B3": 4, "C": 5}
-Masaoka_Koga_Stage_mapper = {"I/IIA": 0, "IIB": 1, "III/IV": 2}
+# 训练模型
+model.fit(X_resampled, y_resampled)
 
-# 预测函数
-def predict_lung_metastasis(Race, WHO_classification, Masaoka_Koga_Stage):
-    input_data = pd.DataFrame({
-        'Race': [Race_mapper[Race]],
-        'WHO_classification': [WHO_classification_mapper[WHO_classification]],
-        'Masaoka_Koga_Stage': [Masaoka_Koga_Stage_mapper[Masaoka_Koga_Stage]],
-    }, columns=feature_order)
+# 保存模型
+joblib.dump(model, 'trained_model.pkl')
 
-    input_scaled = scaler.transform(input_data)
-    prediction = gbm_model.predict(input_scaled)[0]
-    probability = gbm_model.predict_proba(input_scaled)[0][1]  # 获取属于类别1的概率
-    class_label = class_mapping[prediction]
-    return class_label, probability
-
-# 创建Web应用程序
-st.title("GBM Model Predicting Lung Metastasis of Thymoma")
-st.sidebar.write("Patient Information")
-
-Race = st.sidebar.selectbox("Race", options=list(Race_mapper.keys()))
-WHO_classification = st.sidebar.selectbox("WHO Classification", options=list(WHO_classification_mapper.keys()))
-Masaoka_Koga_Stage = st.sidebar.selectbox("Masaoka-Koga Stage", options=list(Masaoka_Koga_Stage_mapper.keys()))
-
-if st.button("Predict"):
-    prediction, probability = predict_lung_metastasis(Race, WHO_classification, Masaoka_Koga_Stage)
-
-    st.write("Class Label: ", prediction)
-    st.write("Probability of lung metastasis: {:.3f}".format(probability))
+st.write("Model training complete and saved as 'trained_model.pkl'")
